@@ -1,0 +1,11 @@
+citHeader("To cite the eDNApower package in publications, please use:")
+
+citEntry(
+  entry = "Software",
+  title = "eDNApower: Power Analysis for eDNA and Occupancy-Based Study Designs",
+  author = person("Oliver", "Stringham", role = c("aut", "cre")),
+  year = "2026",
+  version = "0.1.0",
+  doi = "https://github.com/ocstringham/eDNApower",
+  note = "R package. https://github.com/ocstringham/eDNApower"
+)

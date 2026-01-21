@@ -1,0 +1,12 @@
+Package: eDNApower
+Type: Package
+Title: Power Analysis for eDNA Occupancy Sampling Designs
+Version: 0.1.0
+Authors@R: person("Oliver", "Stringham", email = "oliverstringham@gmail.com", role = c("aut", "cre"))
+Description: Computes frequentist and Bayesian prior predictive power (probability) for eDNA occupancy sampling designs, including heatmaps for sample size and technical replicates.
+Depends: R (>= 4.0)
+Imports: ggplot2
+License: MIT
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.2
