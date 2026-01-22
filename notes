@@ -1,4 +1,5 @@
 to do
+- Add in prob dna is at the sampling location and assume homogeneous dna throughout site. == not needed bc scope of PA doesn't call for this. often folded into theta
 - add optional params for ggplot thresholds of power
 - go thru documentation to make sure it makes sense
 - add in readme description of what it does and use correct terminology and use case
@@ -7,3 +8,5 @@ to do
 
 maybe
 - add for later to do cost surface with costs per sample and tech rep
+- Add to do to examine clumped distibs but hold off on that.
+- power analysis to get error bars around theta small (see r package that already runs hier edna occ model)
