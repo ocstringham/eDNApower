@@ -15,10 +15,14 @@ g1 = eDNA_power_grid(n_vals = 5:10, k_vals = 1:3, theta = 0.6, p = 0.8, s_min = 
 g2 = eDNA_power_grid(n_vals = 5:100, k_vals = 1:9, theta = runif(1000, 0.4, 0.6), p = rbeta(1000, 1.8, 4.2), s_min = 5)
 
 
+
+?eDNA_power_extract
+e2 = eDNA_power_extract(g2, target_power = 0.90)
+
+
 ?eDNA_power_heatmap
 
-
-eDNA_power_heatmap(g1, breaks = c(0.25,0.5,0.75))
+# eDNA_power_heatmap(g1, breaks = c(0.25,0.5,0.75))
 eDNA_power_heatmap(g2, breaks = c(0.25,0.5,0.75, 0.9, 0.95))
 
 #

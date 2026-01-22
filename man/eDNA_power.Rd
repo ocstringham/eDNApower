@@ -17,7 +17,7 @@ eDNA_power(n, k, theta, p, s_min, n_sim = 10000)
 
 \item{s_min}{Integer. Minimum number of positive samples to be considered successful.}
 
-\item{n_sim}{Integer. Number of Monte Carlo simulations to run (default 10000). Only used if a vector is provided for `theta` or `p`.}
+\item{n_sim}{Integer. Number of Monte Carlo simulations to run (default 10,000). Only used if a vector is provided for `theta` or `p`.}
 }
 \value{
 Numeric. The probability of ≥ s_min positive samples, considering at least one technical replicate per sample detecting DNA as a positive detection.

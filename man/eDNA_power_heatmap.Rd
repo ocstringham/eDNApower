@@ -9,7 +9,7 @@ eDNA_power_heatmap(grid, breaks = c(0.5, 0.75, 0.95, 0.99))
 \arguments{
 \item{grid}{Data frame returned by `eDNA_power_grid`.}
 
-\item{breaks}{Numeric vector. Break points for the color (probability) scale (default c(0.5, 0.75, 0.95, 0.99)).}
+\item{breaks}{Numeric vector. Break points for the fill color (probability) scale (default c(0.5, 0.75, 0.95, 0.99)).}
 }
 \value{
 ggplot2 object displaying a heatmap.

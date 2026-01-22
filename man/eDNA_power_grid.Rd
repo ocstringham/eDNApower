@@ -13,7 +13,7 @@ eDNA_power_grid(n_vals, k_vals, s_min, n_sim = 10000, theta = NULL, p = NULL)
 
 \item{s_min}{Integer. Minimum number of positive samples to be considered successful.}
 
-\item{n_sim}{Integer. Number of Monte Carlo simulations to run (default 10000). Only used if a vector is provided for `theta` or `p`.}
+\item{n_sim}{Integer. Number of Monte Carlo simulations to run (default 10,000). Only used if a vector is provided for `theta` or `p`.}
 
 \item{theta}{Numeric or Numeric Vector. Value(s) between 0 and 1. Probability that DNA is present in a sample.}
 

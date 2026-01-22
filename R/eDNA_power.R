@@ -52,7 +52,7 @@ eDNA_power <- function(n, k, theta, p, s_min, n_sim = 10000) {
 eDNA_power_grid <- function(n_vals, k_vals, s_min, n_sim = 10000,
                              theta = NULL, p = NULL) {
   grid <- expand.grid(n = n_vals, k = k_vals)
-  grid$power <- mapply(eDNA_power, n = grid$n, k = grid$k,
+  grid$probability <- mapply(eDNA_power, n = grid$n, k = grid$k,
                        MoreArgs = list(s_min = s_min, n_sim = n_sim,
                                        theta = theta, p = p))
   return(grid)
@@ -75,7 +75,14 @@ eDNA_power_grid <- function(n_vals, k_vals, s_min, n_sim = 10000,
 #' @export
 eDNA_power_extract <- function(grid, target_power){
 
-
+    grid |>
+      dplyr::group_by(n) |>
+      dplyr::filter(probability >= target_power) |>
+      dplyr::ungroup() |>
+      dplyr::group_by(k) |>
+      dplyr::slice_min(probability) |>
+      dplyr::ungroup() |>
+      dplyr::arrange(n, k)
 }
 
 
@@ -84,16 +91,18 @@ eDNA_power_extract <- function(grid, target_power){
 #' Generates a heatmap of prior predictive power across combinations of `n` and `k`.
 #'
 #' @param grid Data frame returned by `eDNA_power_grid`.
-#' @param breaks Numeric vector. Break points for the color (probability) scale (default c(0.5, 0.75, 0.95, 0.99)).
+#' @param breaks Numeric vector. Break points for the fill color (probability) scale (default c(0.5, 0.75, 0.95, 0.99)).
 #' @return ggplot2 object displaying a heatmap.
 #' @examples
 #' grid <- eDNA_power_grid(n_vals = 5:10, k_vals = 1:3, theta = 0.6, p = 0.8, s_min = 5)
 #' eDNA_power_heatmap(grid)
 #' @export
 eDNA_power_heatmap <- function(grid, breaks = c(0.5,0.75,0.95, 0.99)) {
-  ggplot2::ggplot(grid, ggplot2::aes(x = n, y = k, fill = power)) +
+  ggplot2::ggplot(grid, ggplot2::aes(x = n, y = k, fill = probability)) +
     ggplot2::geom_tile() +
     ggplot2::scale_fill_fermenter(limits = c(0, 1), breaks = breaks, palette = "YlGn", direction = 1) +
+    ggplot2::scale_y_continuous(breaks = scales::pretty_breaks()) +
+    ggplot2::scale_x_continuous(breaks = scales::pretty_breaks()) +
     ggplot2::labs(x = "Number of samples (n)",
                   y = "Technical replicates per sample (k)",
                   fill = "Probability of ≥ s_min\npositive samples") +
