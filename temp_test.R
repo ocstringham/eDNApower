@@ -23,7 +23,10 @@ e2 = eDNA_power_extract(g2, target_power = 0.90)
 ?eDNA_power_heatmap
 
 # eDNA_power_heatmap(g1, breaks = c(0.25,0.5,0.75))
-eDNA_power_heatmap(g2, breaks = c(0.25,0.5,0.75, 0.9, 0.95))
+eDNA_power_heatmap(g2, 5, breaks = c(0.25,0.5,0.75, 0.9, 0.95))
+
+
+
 
 #
 # freq_power(10, 2, 0.6, 0.8)
