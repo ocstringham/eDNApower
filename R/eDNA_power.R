@@ -61,6 +61,22 @@ eDNA_power_grid <- function(n_vals, k_vals, s_min, n_sim = 10000,
 
 
 #' Extract n sample and k replicates that acheive target power
+#'
+#' Extracts the minimum number of samples (n) and technical replicates (k) needed to achieve a target power level.
+#'
+#' @param grid Data frame returned by `eDNA_power_grid`.
+#' @param target_power Numeric. Target power level between 0 and 1.
+#' @return Data frame with minimum `n` and `k` to achieve target power.
+#' @examples
+#' grid <- eDNA_power_grid(n_vals = 5:20, k_vals = 1:5, theta = 0.6, p = 0.8, s_min = 5)
+#' eDNA_power_extract(grid)
+#'
+#'
+#' @export
+eDNA_power_extract <- function(grid, target_power){
+
+
+}
 
 
 #' Plot Power Heatmap
