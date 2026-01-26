@@ -80,46 +80,52 @@ library(dplyr)
 library(tidyr)
 
 n_sites = 1
-n_samples = 50
-n_pos_samples = 10 # per site
+n_samples = 30
+n_pos_samples =3 # per site
 n_tech_reps = 6
-n_pos_tech_reps = 3 # per positive sample
+n_pos_tech_reps = 4 # per positive sample
 
 # create df of zeros
 df1 = msocc_sim(M = n_sites, J = n_samples, K = n_tech_reps,
-                psi = 0, theta = 0, p = 0)
+                psi = 1, theta = 0.1, p = 0.5)
+
+# df1$resp %>%
+#   pivot_longer(cols = starts_with("pcr")) %>%
+#   group_by(site) %>%
+#   summarise(total_positives = sum(value))
+
 
 # fill in desired n pos samples and n pos tech reps
 
 ## select n_pos_samples samples to be positive (per site)
-df1$resp %>%
-  group_by(site) %>%
-  # pivot long pcr replicates
-  pivot_longer(cols = starts_with("pcr")) %>%
-  # select n_pos_samples samples to be positive for first n_pos_samples samples
-  mutate(value =
-           case_when(
-    (sample %in% sample(1:n_samples, n_pos_samples)) &
-      (name %in% paste0("pcr", sample(1:n_tech_reps, n_pos_tech_reps))) ~ n_pos_tech_reps,
-    TRUE ~ 0
-  )) %>%
-  # to int
-  mutate(value = as.integer(value)) %>%
-  # pivot wider back to original format
-  pivot_wider(names_from = name, values_from = value) %>%
-ungroup() %>%
-as.data.frame()
+df1$resp =
+  df1$resp %>%
+    # pivot long pcr replicates
+    pivot_longer(cols = starts_with("pcr")) %>%
+    group_by(site) %>%
+    # select n_pos_samples samples to be positive for first n_pos_samples samples
+    mutate(value =
+             case_when(
+      (sample %in% sample(1:n_samples, n_pos_samples)) &
+        (name %in% paste0("pcr", sample(1:n_tech_reps, n_pos_tech_reps))) ~ 1,
+      TRUE ~ 0
+    )) %>%
+    # to int
+    mutate(value = as.integer(value)) %>%
+    ungroup() %>%
+    # pivot wider back to original format
+    pivot_wider(names_from = name, values_from = value) %>%
+    as.data.frame()
 
 
 # run model
 # sim <- msocc_sim(M = 1, J = 100, K = 6, psi = 0.5, theta = 0.3, p = 0.6)
 
-
 mod <- msocc_mod(wide_data = df1$resp,
                  site = list(model = ~ 1, cov_tbl = df1$site),
                  sample = list(model = ~ 1, cov_tbl = df1$sample),
                  rep = list(model = ~ 1, cov_tbl = df1$rep),
-                 progress = F, num.mcmc = 1e6)
+                 progress = T, num.mcmc = 1e4)
 posterior_summary(mod, print = T)
 posterior_summary(mod, level = 'site', print = T)
 posterior_summary(mod, level = 'sample', print = T)
