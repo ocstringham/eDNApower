@@ -79,7 +79,7 @@ library(msocc)
 library(dplyr)
 library(tidyr)
 
-n_sites = 1
+n_sites = 2
 n_samples = 30
 n_pos_samples =6 # per site
 n_tech_reps = 6
@@ -132,6 +132,13 @@ posterior_summary(mod, level = 'sample', print = T)
 posterior_summary(mod, level = 'rep', print = T)
 
 
+
+
+
+# ---------------------------------------------------------------------------- #
+
+
+
 # vary n total, n pos samples, n pos tech reps and see how CIs change
 
 sim_data = function(n_sites,
@@ -168,11 +175,12 @@ sim_data = function(n_sites,
 }
 
 # create df grid of different scenarios
-grid = expand.grid(n_sites = 1,
-                   n_samples = c(30,50,100),
-                   n_pos_samples = c(3,10),
+grid = expand.grid(n_sites = c(1,2),
+                   n_samples = c(15,30,50),
+                   n_pos_samples = c(1,3,5,10),
                    n_tech_reps = c(6),
                    n_pos_tech_reps = c(1,3, 5))
+
 ## rm if more positive samples than total samples OR
 ## morepositive technical reps than total technical reps
 grid = grid %>%
@@ -190,40 +198,109 @@ for(i in 1:nrow(grid)){
 }
 
 # run model for each scenario and save posterior summaries
-posterior_sample_list = list()
+mod_list = list()
 for(i in 1:length(sim_list)){
-  mod <- msocc_mod(wide_data = sim_list[[i]]$resp,
-                   site = list(model = ~ 1, cov_tbl = sim_list[[i]]$site),
-                   sample = list(model = ~ 1, cov_tbl = sim_list[[i]]$sample),
-                   rep = list(model = ~ 1, cov_tbl = sim_list[[i]]$rep),
-                   progress = F, num.mcmc = 1e4)
+  mod_list[[i]] <- msocc_mod(wide_data = sim_list[[i]]$resp,
+                     site = list(model = ~ 1, cov_tbl = sim_list[[i]]$site),
+                     sample = list(model = ~ 1, cov_tbl = sim_list[[i]]$sample),
+                     rep = list(model = ~ 1, cov_tbl = sim_list[[i]]$rep),
+                     progress = F, num.mcmc = 5e4)
+  message(paste0("Completed scenario ", i, " of ", nrow(grid)))
+}
 
-  # get posterior summary for sample occupancy
-  posterior_sample_list[[i]] = posterior_summary(mod, level = 'sample', print = F)
+
+# extract info, takes a little depending number of scenarios
+posterior_sample_list = list()
+for(i in 1:length(mod_list)){
+
+  # get posterior summaries
+  posterior_sample_list[[i]] =
+    bind_cols(
+      # get posterior summary for sample detection
+      posterior_summary(mod_list[[i]], level = 'sample', print = F)[1,] %>% # assuming no site difference (ie covariates)
+        select(median, mean, `0.025`, `0.975`) %>%
+        rename_with(.cols = everything(),
+                    .fn = ~ paste0("sample_", .)) ,
+
+      # get posterior summary for rep detection
+      posterior_summary(mod_list[[i]], level = 'rep', print = F)[1,] %>% # assuming no site difference (ie covariates)
+        select(median, mean, `0.025`, `0.975`) %>%
+        rename_with(.cols = everything(),
+                    .fn = ~ paste0("rep_", .))
+    )
+
   ## add in scenario info
+  posterior_sample_list[[i]]$n_sites = grid$n_sites[i]
   posterior_sample_list[[i]]$n_samples = grid$n_samples[i]
   posterior_sample_list[[i]]$n_pos_samples = grid$n_pos_samples[i]
   posterior_sample_list[[i]]$n_tech_reps = grid$n_tech_reps[i]
   posterior_sample_list[[i]]$n_pos_tech_reps = grid$n_pos_tech_reps[i]
 
-  message(paste0("Completed scenario ", i, " of ", nrow(grid)))
 }
+
 
 # to one df
 posterior_sample_df = bind_rows(posterior_sample_list)
 
 # get range
-posterior_sample_df$range = posterior_sample_df$`0.975` - posterior_sample_df$`0.025`
+posterior_sample_df$sample_range = posterior_sample_df$`sample_0.975` - posterior_sample_df$`sample_0.025`
+posterior_sample_df$rep_range = posterior_sample_df$`rep_0.975` - posterior_sample_df$`rep_0.025`
+
+# # save for future use
+# saveRDS(posterior_sample_df, file = "sample_posterior_sample_df.rds")
 
 library(ggplot2)
 
-# plot where y axis is range, x is n total samples, color is n pos samples, facet is n pos tech reps
-ggplot(posterior_sample_df, aes(x = as.factor(n_samples), y = range,
-                                 color = as.factor(n_pos_samples))) +
+
+# Define new facet labels
+ptr.labs <- paste0("# pos TRs = ", unique(posterior_sample_df$n_pos_tech_reps))
+names(ptr.labs) <- unique(posterior_sample_df$n_pos_tech_reps)
+
+tr.labs = paste0("# TRs = ", unique(posterior_sample_df$n_tech_reps))
+names(tr.labs) <- unique(posterior_sample_df$n_tech_reps)
+
+# line plot theta
+posterior_sample_df %>%
+  ggplot(aes(x = n_samples, y = sample_range, group = n_pos_samples,
+             color = as.factor(n_pos_samples))) +
   geom_point() +
-  geom_line(aes(group = n_pos_samples)) +
-  facet_wrap(~n_pos_tech_reps) +
-  labs(x = "Total number of samples",
-       y = "Range of 95% credible interval for sample occupancy",
-       color = "Number of positive samples") +
-  theme_minimal()
+  geom_line() +
+  # add h line at some ideal value
+  geom_hline(yintercept = 0.1, linetype = "dashed", color = "grey50") +
+  scale_color_brewer(palette = "Reds") +
+  facet_grid(n_pos_tech_reps ~ n_tech_reps,
+             labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
+  labs(color = "Number of positive samples",
+       y = "Range of 95% credible interval for theta",
+       x = "Total number of samples") +
+  theme_bw()
+
+
+# line plot p
+posterior_sample_df %>%
+  ggplot(aes(x = n_samples, y = rep_range, group = n_pos_samples,
+             color = as.factor(n_pos_samples))) +
+  geom_point() +
+  geom_line() +
+  # add h line at some ideal value
+  geom_hline(yintercept = 0.1, linetype = "dashed", color = "grey50") +
+  scale_color_brewer(palette = "Reds") +
+  facet_grid(n_pos_tech_reps ~ n_tech_reps,
+             labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
+  labs(color = "Number of positive samples",
+       y = "Range of 95% credible interval for p",
+       x = "Total number of samples") +
+  theme_bw()
+
+
+
+# # heatmap
+# posterior_sample_df %>%
+#   ggplot(aes(x = n_pos_samples, y = n_samples, fill = sample_range)) +
+#   geom_tile() +
+#   facet_grid(n_pos_tech_reps ~ n_tech_reps) +
+#   scale_fill_fermenter(breaks = c(0.1, 0.2, 0.3, 0.5, 0.75)) +
+#   labs(x = "Number of positive samples",
+#        y = "Total number of samples",
+#        fill = "Range of 95% CI for sample occupancy") +
+#   theme_bw()
