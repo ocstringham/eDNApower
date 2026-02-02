@@ -236,6 +236,8 @@ for(i in 1:length(mod_list)){
   posterior_sample_list[[i]]$n_tech_reps = grid$n_tech_reps[i]
   posterior_sample_list[[i]]$n_pos_tech_reps = grid$n_pos_tech_reps[i]
 
+  message(paste0("Extracted info for scenario ", i, " of ", nrow(grid)))
+
 }
 
 
@@ -274,6 +276,24 @@ posterior_sample_df %>%
        y = "Range of 95% credible interval for theta",
        x = "Total number of samples") +
   theme_bw()
+
+# line plot thetax nsites
+posterior_sample_df %>%
+  ggplot(aes(x = n_samples, y = sample_range, group = n_pos_samples,
+             color = as.factor(n_pos_samples))) +
+  geom_point() +
+  geom_line() +
+  # add h line at some ideal value
+  geom_hline(yintercept = 0.1, linetype = "dashed", color = "grey50") +
+  scale_color_brewer(palette = "Reds") +
+  facet_grid(n_pos_tech_reps ~ n_sites,
+             # labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)
+             ) +
+  labs(color = "Number of positive samples",
+       y = "Range of 95% credible interval for theta",
+       x = "Total number of samples") +
+  theme_bw()
+
 
 
 # line plot p
