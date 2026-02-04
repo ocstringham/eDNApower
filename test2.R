@@ -56,10 +56,12 @@ pa = function(n_sites,
                      n_pos_tech_reps = n_pos_tech_reps)
 
   ## rm if more positive samples than total samples OR
-  ## morepositive technical reps than total technical reps
+  ## more positive technical reps than total technical reps
   grid = grid %>%
     filter(n_pos_samples <= n_samples) %>%
     filter(n_pos_tech_reps <= n_tech_reps)
+
+  if(nrow(grid) == 0) return(NULL)
 
 
   ## get sim data for each scenario
@@ -177,7 +179,7 @@ results <- param_grid %>%
 # 4. Clean up
 plan(sequential)
 
-
+saveRDS(results, file = "sample_posterior_sample_df_v2.rds")
 
 
 # run pa
