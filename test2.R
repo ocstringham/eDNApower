@@ -45,7 +45,8 @@ pa = function(n_sites,
               n_samples,
               n_pos_samples,
               n_tech_reps,
-              n_pos_tech_reps){
+              n_pos_tech_reps,
+              echo = T){
 
   # create df grid of different scenarios
   grid = expand.grid(n_sites = n_sites,
@@ -62,6 +63,7 @@ pa = function(n_sites,
 
 
   ## get sim data for each scenario
+  if(echo) message(paste0("Generating", nrow(grid), "simulated datasets"))
   sim_list = list()
   for(i in 1:nrow(grid)){
     sim_list[[i]] = sim_data(n_sites = grid$n_sites[i],
@@ -69,6 +71,7 @@ pa = function(n_sites,
                              n_pos_samples = grid$n_pos_samples[i],
                              n_tech_reps = grid$n_tech_reps[i],
                              n_pos_tech_reps = grid$n_pos_tech_reps[i])
+    if(echo) message(paste0(i, " of ", nrow(grid), " simulated datasets created"))
   }
 
 
@@ -80,7 +83,7 @@ pa = function(n_sites,
                                sample = list(model = ~ 1, cov_tbl = sim_list[[i]]$sample),
                                rep = list(model = ~ 1, cov_tbl = sim_list[[i]]$rep),
                                progress = F, num.mcmc = 5e4)
-    message(paste0("Completed scenario ", i, " of ", nrow(grid)))
+    if(echo) message(paste0("Completed scenario ", i, " of ", nrow(grid)))
   }
 
 
@@ -111,7 +114,7 @@ pa = function(n_sites,
     posterior_sample_list[[i]]$n_tech_reps = grid$n_tech_reps[i]
     posterior_sample_list[[i]]$n_pos_tech_reps = grid$n_pos_tech_reps[i]
 
-    message(paste0("Extracted info for scenario ", i, " of ", nrow(grid)))
+    if(echo) message(paste0("Extracted info for scenario ", i, " of ", nrow(grid)))
 
   }
 
@@ -129,23 +132,68 @@ pa = function(n_sites,
 
 # ---------------------------------------------------------------------------- #
 
+# install.packages('devtools') # only needed if devtools is not currently installed
+# devtools::install_github('StrattonCh/msocc')
+
 library(msocc)
 library(dplyr)
 library(tidyr)
+library(furrr)
 library(ggplot2)
 
 
 # run pa
+# 1. Create all combinations of parameters
+param_grid <- expand_grid(
+  n_sites = 1,
+  n_samples = seq(from = 10, to = 100, by = 10),
+  n_pos_samples =  c(1,3, seq(from = 10, to = 100, by = 5)),
+  n_tech_reps = c(3,6),
+  n_pos_tech_reps = c(1:6)
+)
+
+
+# 2. Set up parallel processing
+plan(multisession, workers = 60)
+
+# 3. Map over the grid with furrr
+results <- param_grid %>%
+  future_pmap_dfr(
+    function(n_sites, n_samples, n_pos_samples, n_tech_reps, n_pos_tech_reps) {
+      # Call your function with these parameters
+      pa(
+        n_sites = n_sites,
+        n_samples = n_samples,
+        n_pos_samples = n_pos_samples,
+        n_tech_reps = n_tech_reps,
+        n_pos_tech_reps = n_pos_tech_reps,
+        echo = FALSE
+      )
+    },
+    .options = furrr_options(seed = TRUE),
+    .progress = TRUE  # Show progress bar
+  )
+
+# 4. Clean up
+plan(sequential)
+
+
+
+
+# run pa
 df1 = pa(n_sites = 1,
-            n_samples = c(15,30,50, 100, 200),
-            n_pos_samples = c(1,3,5,10, 15, 22, 30, 40, 50, 75, 100, 150, 200),
+            n_samples = 1:10, # c(15,30,50, 100, 200),
+            n_pos_samples = 1:5, # c(1,3,5,10, 15, 22, 30, 40, 50, 75, 100, 150, 200),
             n_tech_reps = c(3, 6),
-            n_pos_tech_reps = c(1,3, 5))
+            n_pos_tech_reps = c(1:6))
 
 
 # saveRDS(df1, file = "sample_posterior_sample_df.rds")
 # df1 = readRDS("sample_posterior_sample_df.rds")
 
+
+
+# ---------------------------------------------------------------------------- #
 
 ptr.labs <- paste0(unique(df1$n_pos_tech_reps), " pos TRs")
 names(ptr.labs) <- unique(df1$n_pos_tech_reps)
@@ -155,6 +203,7 @@ names(tr.labs) <- unique(df1$n_tech_reps)
 
 ns.labs = paste0(unique(df1$n_samples), " samples")
 names(ns.labs) <- unique(df1$n_samples)
+
 
 # line plot theta v2
 df1 %>%
@@ -177,7 +226,7 @@ df1 %>%
 
 
 df1 %>%
-  # filter(n_tech_reps == 6) %>%
+  filter(n_tech_reps == 6) %>%
   # mutate(prop_pos = n_pos_samples / n_samples) %>%
   ggplot(aes(x = as.factor(n_pos_samples),
              y = sample_median, group = n_samples, color = as.factor(n_samples))) +
@@ -188,14 +237,86 @@ df1 %>%
   geom_line() +
   scale_color_viridis_d() +
   labs(x = "Number of positive samples",
-       y = "Median & 95% CI for sample occupancy") +
+       y = "Median & 95% CI for theta") +
   facet_grid(n_samples ~ n_pos_tech_reps,
              labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs, n_samples = ns.labs)
              ) +
   theme_bw()
 
 
+# line plot p
+df1 %>%
+  mutate(prop_pos = n_pos_samples / n_samples) %>%
+  ggplot(aes(x = prop_pos, y = rep_range, group = n_samples,
+             color = as.factor(n_samples))) +
+  geom_point() +
+  geom_line() +
+  # add h line at some ideal value
+  geom_hline(yintercept = 0.1, linetype = "dashed", color = "grey50") +
+  # scale_color_brewer(palette = "Reds") +
+  scale_x_continuous(breaks = scales::pretty_breaks()) +
+  scale_color_viridis_d() +
+  facet_grid(n_tech_reps ~ n_pos_tech_reps,
+             labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
+  labs(color = "Total number of samples",
+       y = "Range of 95% credible interval for p",
+       x = "Proportion of positive samples") +
+  theme_bw()
 
+df1 %>%
+  filter(n_tech_reps == 6) %>%
+  # mutate(prop_pos = n_pos_samples / n_samples) %>%
+  ggplot(aes(x = as.factor(n_pos_samples),
+             y = rep_median, group = n_samples, color = as.factor(n_samples))) +
+  geom_point(position=position_dodge(width=0.5)) +
+  # geom_ribbon(aes(ymin = sample_0.025, ymax = sample_0.975, fill = n_samples), alpha = 0.2) +
+  geom_errorbar(aes(ymin = rep_0.025, ymax = rep_0.975), width = 0.2,
+                position=position_dodge(width=0.5)) +
+  geom_line() +
+  scale_color_viridis_d() +
+  labs(x = "Number of positive samples",
+       y = "Median & 95% CI for p") +
+  facet_grid(n_samples ~ n_pos_tech_reps,
+             labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs, n_samples = ns.labs)
+  ) +
+  theme_bw()
+
+
+# ---------------------------------------------------------------------------- #
+
+
+# library(gbm)
+library(gbm3)
+
+df2 = df1 %>%
+  mutate(prop_pos = n_pos_samples / n_samples)
+
+# Perform a cross-validated fit
+gauss_fit <- gbmt(sample_range ~  prop_pos + n_samples + n_tech_reps + n_pos_tech_reps,
+                  data=df2, cv_folds =2, keep_gbm_data = TRUE)
+
+summary(gauss_fit)
+
+relative_influence(gauss_fit, rescale = T)
+
+gbmt_performance(gauss_fit, method='cv')
+
+gbm3::plot
+
+# dont plot more than 2 will crash
+plot(gauss_fit, var_index = 1)
+plot(gauss_fit, var_index = 2)
+plot(gauss_fit, var_index = 3)
+plot(gauss_fit, var_index = 4)
+
+interact(gauss_fit, df2, var_indices = 2:3)
+
+plot(gauss_fit, var_index = 1:2)
+plot(gauss_fit, var_index = c(1,3))
+plot(gauss_fit, var_index = c(2,4))
+plot(gauss_fit, var_index = c(1,4))
+
+pretty_gbm_tree(gauss_fit)
 
 # library(eDNAoccupancy)
 # library(dplyr)
@@ -563,3 +684,12 @@ df1 %>%
 # #        y = "Total number of samples",
 # #        fill = "Range of 95% CI for sample occupancy") +
 # #   theme_bw()
+
+# sim_list = future_pmap(grid, function(row){
+#   # row <- list(...)
+#   sim_data(n_sites = row$n_sites,
+#            n_samples = row$n_samples,
+#            n_pos_samples = row$n_pos_samples,
+#            n_tech_reps = row$n_tech_reps,
+#            n_pos_tech_reps = row$n_pos_tech_reps)
+# })
