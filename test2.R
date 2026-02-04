@@ -137,10 +137,10 @@ library(ggplot2)
 
 # run pa
 df1 = pa(n_sites = 1,
-            n_samples = c(15,30,50, 100),
-            n_pos_samples = c(1,3,5,10, 15, 22, 30, 40, 50, 75, 100),
-            n_tech_reps = c(6),
-            n_pos_tech_reps = c(1,3))
+            n_samples = c(15,30,50, 100, 200),
+            n_pos_samples = c(1,3,5,10, 15, 22, 30, 40, 50, 75, 100, 150, 200),
+            n_tech_reps = c(3, 6),
+            n_pos_tech_reps = c(1,3, 5))
 
 
 # saveRDS(df1, file = "sample_posterior_sample_df.rds")
@@ -152,6 +152,9 @@ names(ptr.labs) <- unique(df1$n_pos_tech_reps)
 
 tr.labs = paste0(unique(df1$n_tech_reps), " TRs")
 names(tr.labs) <- unique(df1$n_tech_reps)
+
+ns.labs = paste0(unique(df1$n_samples), " samples")
+names(ns.labs) <- unique(df1$n_samples)
 
 # line plot theta v2
 df1 %>%
@@ -174,18 +177,20 @@ df1 %>%
 
 
 df1 %>%
-  filter(n_tech_reps == 6) %>%
+  # filter(n_tech_reps == 6) %>%
+  # mutate(prop_pos = n_pos_samples / n_samples) %>%
   ggplot(aes(x = as.factor(n_pos_samples),
-             y = sample_median, group = n_samples, color = n_samples)) +
+             y = sample_median, group = n_samples, color = as.factor(n_samples))) +
   geom_point(position=position_dodge(width=0.5)) +
   # geom_ribbon(aes(ymin = sample_0.025, ymax = sample_0.975, fill = n_samples), alpha = 0.2) +
   geom_errorbar(aes(ymin = sample_0.025, ymax = sample_0.975), width = 0.2,
                 position=position_dodge(width=0.5)) +
-  scale_color_viridis_b() +
+  geom_line() +
+  scale_color_viridis_d() +
   labs(x = "Number of positive samples",
-       y = "Range of 95% CI for sample occupancy") +
-  facet_grid(~ n_pos_tech_reps,
-             labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)
+       y = "Median & 95% CI for sample occupancy") +
+  facet_grid(n_samples ~ n_pos_tech_reps,
+             labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs, n_samples = ns.labs)
              ) +
   theme_bw()
 
