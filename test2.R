@@ -137,16 +137,26 @@ library(ggplot2)
 
 # run pa
 df1 = pa(n_sites = 1,
-            n_samples = c(15,30,50),
-            n_pos_samples = c(1,3,5,10),
+            n_samples = c(15,30,50, 100),
+            n_pos_samples = c(1,3,5,10, 15, 22, 30, 40, 50, 75, 100),
             n_tech_reps = c(6),
-            n_pos_tech_reps = c(1,3, 5))
+            n_pos_tech_reps = c(1,3))
 
 
+# saveRDS(df1, file = "sample_posterior_sample_df.rds")
+# df1 = readRDS("sample_posterior_sample_df.rds")
+
+
+ptr.labs <- paste0(unique(df1$n_pos_tech_reps), " pos TRs")
+names(ptr.labs) <- unique(df1$n_pos_tech_reps)
+
+tr.labs = paste0(unique(df1$n_tech_reps), " TRs")
+names(tr.labs) <- unique(df1$n_tech_reps)
 
 # line plot theta v2
 df1 %>%
-  ggplot(aes(x = n_pos_samples, y = sample_range, group = n_samples,
+  mutate(prop_pos = n_pos_samples / n_samples) %>%
+  ggplot(aes(x = prop_pos, y = sample_range, group = n_samples,
              color = as.factor(n_samples))) +
   geom_point() +
   geom_line() +
@@ -155,11 +165,11 @@ df1 %>%
   # scale_color_brewer(palette = "Reds") +
   scale_x_continuous(breaks = scales::pretty_breaks()) +
   scale_color_viridis_d() +
-  facet_grid(n_pos_tech_reps ~ n_tech_reps,
+  facet_grid(n_tech_reps ~ n_pos_tech_reps,
              labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
   labs(color = "Total number of samples",
        y = "Range of 95% credible interval for theta",
-       x = "Number of positive samples") +
+       x = "Proportion of positive samples") +
   theme_bw()
 
 
@@ -174,7 +184,9 @@ df1 %>%
   scale_color_viridis_b() +
   labs(x = "Number of positive samples",
        y = "Range of 95% CI for sample occupancy") +
-  facet_grid(~ n_pos_tech_reps) +
+  facet_grid(~ n_pos_tech_reps,
+             labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)
+             ) +
   theme_bw()
 
 
