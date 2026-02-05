@@ -274,7 +274,7 @@ results %>%
        x = "Proportion of positive samples") +
   theme_bw()
 
-df1 %>%
+results %>%
   filter(n_tech_reps == 6) %>%
   # mutate(prop_pos = n_pos_samples / n_samples) %>%
   ggplot(aes(x = as.factor(n_pos_samples),
