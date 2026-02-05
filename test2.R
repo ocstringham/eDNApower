@@ -148,8 +148,8 @@ library(ggplot2)
 # 1. Create all combinations of parameters
 param_grid <- expand_grid(
   n_sites = 1,
-  n_samples = seq(from = 10, to = 100, by = 10),
-  n_pos_samples =  c(1,3, seq(from = 10, to = 100, by = 5)),
+  n_samples = c(seq(from = 10, to = 50, by = 10), 75, 100), # seq(from = 10, to = 100, by = 10),
+  n_pos_samples = c(1, seq(from = 2, to = 100, by = 2)), # c(1,3,7, seq(from = 10, to = 100, by = 2)), #
   n_tech_reps = c(3,6),
   n_pos_tech_reps = c(1:6)
 )
@@ -208,7 +208,7 @@ names(ns.labs) <- unique(df1$n_samples)
 
 
 # line plot theta v2
-df1 %>%
+results %>%
   mutate(prop_pos = n_pos_samples / n_samples) %>%
   ggplot(aes(x = prop_pos, y = sample_range, group = n_samples,
              color = as.factor(n_samples))) +
@@ -222,12 +222,12 @@ df1 %>%
   facet_grid(n_tech_reps ~ n_pos_tech_reps,
              labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
   labs(color = "Total number of samples",
-       y = "Range of 95% credible interval for theta",
-       x = "Proportion of positive samples") +
+       y = "Estimated theta 95% CI",
+       x = "Proportion of positive samples (actual theta)") +
   theme_bw()
 
 
-df1 %>%
+results %>%
   filter(n_tech_reps == 6) %>%
   # mutate(prop_pos = n_pos_samples / n_samples) %>%
   ggplot(aes(x = as.factor(n_pos_samples),
@@ -245,9 +245,18 @@ df1 %>%
              ) +
   theme_bw()
 
+# ## heatmap
+# results %>%
+#   mutate(prop_pos = n_pos_samples / n_samples) %>%
+#   ggplot(aes(x=prop_pos, y = n_samples, fill = sample_range)) +
+#   geom_tile() +
+#   facet_grid(n_tech_reps ~ n_pos_tech_reps,
+#              labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
+#   theme_bw()
+
 
 # line plot p
-df1 %>%
+results %>%
   mutate(prop_pos = n_pos_samples / n_samples) %>%
   ggplot(aes(x = prop_pos, y = rep_range, group = n_samples,
              color = as.factor(n_samples))) +
@@ -290,12 +299,12 @@ df1 %>%
 # library(gbm)
 library(gbm3)
 
-df2 = df1 %>%
+df2 = results %>%
   mutate(prop_pos = n_pos_samples / n_samples)
 
 # Perform a cross-validated fit
 gauss_fit <- gbmt(sample_range ~  prop_pos + n_samples + n_tech_reps + n_pos_tech_reps,
-                  data=df2, cv_folds =2, keep_gbm_data = TRUE)
+                  data=df2, cv_folds =5, keep_gbm_data = TRUE)
 
 summary(gauss_fit)
 
@@ -303,7 +312,7 @@ relative_influence(gauss_fit, rescale = T)
 
 gbmt_performance(gauss_fit, method='cv')
 
-gbm3::plot
+# gbm3::plot
 
 # dont plot more than 2 will crash
 plot(gauss_fit, var_index = 1)
@@ -311,7 +320,8 @@ plot(gauss_fit, var_index = 2)
 plot(gauss_fit, var_index = 3)
 plot(gauss_fit, var_index = 4)
 
-interact(gauss_fit, df2, var_indices = 2:3)
+interact(gauss_fit, df2, var_indices = c(1,2))
+interact(gauss_fit, df2, var_indices = c(1,4))
 
 plot(gauss_fit, var_index = 1:2)
 plot(gauss_fit, var_index = c(1,3))
