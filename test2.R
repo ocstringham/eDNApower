@@ -245,14 +245,20 @@ results %>%
              ) +
   theme_bw()
 
-# ## heatmap
-# results %>%
-#   mutate(prop_pos = n_pos_samples / n_samples) %>%
-#   ggplot(aes(x=prop_pos, y = n_samples, fill = sample_range)) +
-#   geom_tile() +
-#   facet_grid(n_tech_reps ~ n_pos_tech_reps,
-#              labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
-#   theme_bw()
+## heatmap
+results %>%
+  mutate(prop_pos = n_pos_samples / n_samples) %>%
+  # snap prop pos to nearest 0.05
+  mutate(prop_pos_round = round(prop_pos, digits = 1)) %>%
+  # filter(n_tech_reps == 6, n_pos_tech_reps == 3) %>%
+  ggplot(aes(x=prop_pos_round, y = as.factor(n_samples), fill = sample_range)) +
+  geom_tile() +
+  # scale_fill_viridis_c() +
+  scale_x_continuous(breaks = scales::pretty_breaks(5)) +
+  scale_fill_fermenter(direction = 1, palette = "OrRd", breaks = c(seq(0, 0.3, 0.1))) +
+  facet_grid(n_tech_reps ~ n_pos_tech_reps,
+             labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
+  theme_bw()
 
 
 # line plot p
@@ -293,42 +299,63 @@ results %>%
   theme_bw()
 
 
+
+## heatmap, 1 pos tr lower undertainty bc bound by 0
+results %>%
+  mutate(prop_pos = n_pos_samples / n_samples) %>%
+  # snap prop pos to nearest 0.05
+  mutate(prop_pos_round = round(prop_pos, digits = 1)) %>%
+  # filter(n_tech_reps == 6, n_pos_tech_reps == 3) %>%
+  ggplot(aes(x=prop_pos_round, y = as.factor(n_samples), fill = rep_range)) +
+  geom_tile() +
+  # scale_fill_viridis_c() +
+  scale_x_continuous(breaks = scales::pretty_breaks(5)) +
+  scale_fill_fermenter(direction = 1, palette = "OrRd", breaks = c(seq(0, 0.3, 0.1))) +
+  facet_grid(n_tech_reps ~ n_pos_tech_reps,
+             labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
+  theme_bw()
+
+
+
 # ---------------------------------------------------------------------------- #
 
 
-# library(gbm)
-library(gbm3)
+# # library(gbm)
+# library(gbm3)
+#
+# df2 = results %>%
+#   mutate(prop_pos = n_pos_samples / n_samples)
+#
+# # Perform a cross-validated fit
+# gauss_fit <- gbmt(sample_range ~  prop_pos + n_samples + n_tech_reps + n_pos_tech_reps,
+#                   data=df2, cv_folds =5, keep_gbm_data = TRUE)
+#
+# summary(gauss_fit)
+#
+# relative_influence(gauss_fit, rescale = T)
+#
+# gbmt_performance(gauss_fit, method='cv')
+#
+# # gbm3::plot
+#
+# # dont plot more than 2 will crash
+# plot(gauss_fit, var_index = 1)
+# plot(gauss_fit, var_index = 2)
+# plot(gauss_fit, var_index = 3)
+# plot(gauss_fit, var_index = 4)
+#
+# interact(gauss_fit, df2, var_indices = c(1,2))
+# interact(gauss_fit, df2, var_indices = c(1,4))
+#
+# plot(gauss_fit, var_index = 1:2)
+# plot(gauss_fit, var_index = c(1,3))
+# plot(gauss_fit, var_index = c(2,4))
+# plot(gauss_fit, var_index = c(1,4))
+#
+# pretty_gbm_tree(gauss_fit)
 
-df2 = results %>%
-  mutate(prop_pos = n_pos_samples / n_samples)
 
-# Perform a cross-validated fit
-gauss_fit <- gbmt(sample_range ~  prop_pos + n_samples + n_tech_reps + n_pos_tech_reps,
-                  data=df2, cv_folds =5, keep_gbm_data = TRUE)
-
-summary(gauss_fit)
-
-relative_influence(gauss_fit, rescale = T)
-
-gbmt_performance(gauss_fit, method='cv')
-
-# gbm3::plot
-
-# dont plot more than 2 will crash
-plot(gauss_fit, var_index = 1)
-plot(gauss_fit, var_index = 2)
-plot(gauss_fit, var_index = 3)
-plot(gauss_fit, var_index = 4)
-
-interact(gauss_fit, df2, var_indices = c(1,2))
-interact(gauss_fit, df2, var_indices = c(1,4))
-
-plot(gauss_fit, var_index = 1:2)
-plot(gauss_fit, var_index = c(1,3))
-plot(gauss_fit, var_index = c(2,4))
-plot(gauss_fit, var_index = c(1,4))
-
-pretty_gbm_tree(gauss_fit)
+# ---------------------------------------------------------------------------- #
 
 # library(eDNAoccupancy)
 # library(dplyr)
