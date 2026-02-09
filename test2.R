@@ -195,7 +195,7 @@ results <- param_grid %>%
 # 4. Clean up
 plan(sequential)
 
-saveRDS(results, file = "sample_posterior_sample_df_v2.rds")
+# saveRDS(results, file = "sample_posterior_sample_df_v2.rds")
 # results = readRDS("sample_posterior_sample_df_v2.rds")
 
 
@@ -270,7 +270,7 @@ results %>%
                               breaks = seq(0, 1, by = 0.05),
                               right = TRUE,
                               include.lowest = TRUE)) %>%
-  filter(n_tech_reps == 6, n_pos_tech_reps == 3) %>%
+  # filter(n_tech_reps == 6, n_pos_tech_reps == 3) %>%
   ggplot(aes(x=prop_pos_round, y = as.factor(n_samples), fill = sample_range)) +
   geom_tile(color = "white") +
   # scale_fill_viridis_c() +
@@ -280,6 +280,33 @@ results %>%
              labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+
+
+## line plot reconfig
+results %>%
+  # filter(n_tech_reps == 6) %>%
+  mutate(prop_pos = n_pos_samples / n_samples) %>%
+  # snap to 0.01
+  mutate(prop_pos_round = round(prop_pos, digits=2)) %>%
+  filter(prop_pos_round <= 0.5) %>%
+  mutate(prop_pos_round = cut(prop_pos_round,
+                              breaks = seq(0, 1, by = 0.05),
+                              right = TRUE,
+                              include.lowest = TRUE)) %>%
+  ggplot(aes(x = as.factor(n_samples), y = sample_range,
+             group = as.factor(n_pos_tech_reps), color = as.factor(n_pos_tech_reps))) +
+  geom_line() +
+  # geom_tile(color = "white") +
+  # scale_fill_viridis_c() +
+  # scale_x_continuous(breaks = scales::pretty_breaks(5)) + #
+  # scale_y_continuous(breaks = c(3,6)) +
+  scale_fill_fermenter(direction = 1, palette = "OrRd", breaks = c(seq(0, 0.4, 0.1))) +
+  facet_grid(n_tech_reps~prop_pos_round) +
+  # facet_grid(n_pos_tech_reps ~ prop_pos_round,
+  #            labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+
 
 
 # line plot p
@@ -340,6 +367,233 @@ results %>%
              labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+
+
+# ---------------------------------------------------------------------------- #
+
+
+fit_beta_from_stats <- function(mean_val, median_val, q025, q975) {
+
+  library(stats)
+
+  # Objective function: minimize squared errors across all constraints
+  objective <- function(params) {
+    alpha <- params[1]
+    beta <- params[2]
+
+    # Prevent invalid parameters
+    if(alpha <= 0 || beta <= 0) return(Inf)
+
+    # Calculate errors for each constraint
+    mean_error <- (alpha/(alpha + beta) - mean_val)^2
+    median_error <- (qbeta(0.5, alpha, beta) - median_val)^2
+    q025_error <- (qbeta(0.025, alpha, beta) - q025)^2
+    q975_error <- (qbeta(0.975, alpha, beta) - q975)^2
+
+    # Return total squared error
+    return(mean_error + median_error + q025_error + q975_error)
+  }
+
+  # Initial guess using method of moments from mean and variance
+  # Estimate variance from percentiles
+  est_var <- ((q975 - q025)/4)^2  # rough approximation
+
+  if(est_var >= mean_val * (1 - mean_val)) {
+    # Use simpler initial guess
+    alpha_init <- 2
+    beta_init <- 2
+  } else {
+    alpha_init <- mean_val * (mean_val*(1-mean_val)/est_var - 1)
+    beta_init <- (1-mean_val) * (mean_val*(1-mean_val)/est_var - 1)
+  }
+
+  # Optimize
+  result <- optim(c(alpha_init, beta_init), objective, method="L-BFGS-B",
+                  lower=c(0.001, 0.001))
+
+  alpha_fit <- result$par[1]
+  beta_fit <- result$par[2]
+
+  # Calculate fitted values
+  fitted_mean <- alpha_fit/(alpha_fit + beta_fit)
+  fitted_median <- qbeta(0.5, alpha_fit, beta_fit)
+  fitted_q025 <- qbeta(0.025, alpha_fit, beta_fit)
+  fitted_q975 <- qbeta(0.975, alpha_fit, beta_fit)
+
+  # Return results
+  list(
+    alpha = alpha_fit,
+    beta = beta_fit,
+    fitted_stats = data.frame(
+      statistic = c("mean", "median", "q025", "q975"),
+      target = c(mean_val, median_val, q025, q975),
+      fitted = c(fitted_mean, fitted_median, fitted_q025, fitted_q975),
+      error = c(fitted_mean - mean_val, fitted_median - median_val,
+                fitted_q025 - q025, fitted_q975 - q975)
+    ),
+    convergence = result$convergence
+  )
+}
+
+
+plot_fitted_beta <- function(fit_result, mean_val, median_val, q025, q975) {
+
+  library(ggplot2)
+
+  alpha <- fit_result$alpha
+  beta <- fit_result$beta
+
+  # Generate data for the density curve
+  x <- seq(0, 1, length.out = 1000)
+  y <- dbeta(x, alpha, beta)
+  df <- data.frame(x = x, y = y)
+
+  # Create the plot
+  p <- ggplot(df, aes(x = x, y = y)) +
+    geom_line(color = "blue", linewidth = 1) +
+
+    # Add vertical lines for statistics
+    geom_vline(aes(xintercept = mean_val, color = "Mean"),
+               linewidth = 1, linetype = "dashed") +
+    geom_vline(aes(xintercept = median_val, color = "Median"),
+               linewidth = 1, linetype = "dashed") +
+    geom_vline(aes(xintercept = q025, color = "2.5% & 97.5%"),
+               linewidth = 1, linetype = "dotted") +
+    geom_vline(aes(xintercept = q975, color = "2.5% & 97.5%"),
+               linewidth = 1, linetype = "dotted") +
+
+    # Styling
+    scale_color_manual(
+      name = "Statistics",
+      values = c("Mean" = "red", "Median" = "green", "2.5% & 97.5%" = "purple")
+    ) +
+
+    labs(
+      title = sprintf("Fitted Beta(%.2f, %.2f)", alpha, beta),
+      x = "x",
+      y = "Density"
+    ) +
+
+    theme_minimal() +
+    theme(legend.position = "right")
+
+  # Print fitted stats table
+  print(fit_result$fitted_stats)
+
+  return(p)
+}
+
+
+n=500
+test_theta = fit_beta_from_stats(results$sample_mean[n],
+                           results$sample_median[n],
+                           results$sample_0.025[n],
+                           results$sample_0.975[n])
+
+test_theta
+
+test_p = fit_beta_from_stats(results$rep_mean[n],
+                             results$rep_median[n],
+                             results$rep_0.025[n],
+                             results$rep_0.975[n])
+test_p
+
+
+plot_fitted_beta(test_theta, results$sample_mean[n],
+                 results$sample_median[n],
+                 results$sample_0.025[n],
+                 results$sample_0.975[n])
+
+plot_fitted_beta(test_p, results$rep_mean[n],
+                 results$rep_median[n],
+                 results$rep_0.025[n],
+                 results$rep_0.975[n])
+
+# use betas for theta and p to get % of false negatives
+
+# Simulation including sample size
+simulate_full_study <- function(n_samples, k_techreps,
+                                alpha_theta, beta_theta,
+                                alpha_p, beta_p,
+                                n_sims = 1000) {
+
+  results <- map_df(1:n_sims, function(i) {
+    # Draw parameters
+    theta <- rbeta(1, alpha_theta, beta_theta)
+    p <- rbeta(1, alpha_p, beta_p)
+
+    # Simulate n_samples
+    true_presence <- rbinom(n_samples, 1, theta)
+
+    # For each present sample, detect with tech reps
+    detected <- sapply(true_presence, function(present) {
+      if (present == 0) return(0)
+      # At least 1 of k reps detects it
+      any(rbinom(k_techreps, 1, p) == 1)
+    })
+
+    # Count false negatives
+    fn_count <- sum(true_presence == 1 & detected == 0)
+
+    data.frame(
+      fn_count = fn_count,
+      total_present = sum(true_presence),
+      fn_rate = ifelse(sum(true_presence) > 0,
+                       fn_count / sum(true_presence),
+                       NA)
+    )
+  })
+
+  return(results)
+}
+
+
+# Run it
+study_results <- simulate_full_study(
+  n_samples = 50,
+  k_techreps = 3,
+  alpha_theta = test_theta$alpha, beta_theta = test_theta$beta,
+  alpha_p = test_p$alpha, beta_p = test_p$beta
+)
+
+summary(study_results)
+
+ggplot(study_results, aes(x=fn_count)) +
+  geom_histogram(binwidth = 1, color = "black")
+
+# # Set your beta distribution parameters
+# alpha_theta <- test_theta$alpha
+# beta_theta <- test_theta$beta
+# alpha_p <- test_p$alpha
+# beta_p <- test_p$beta
+#
+# # Number of technical replicates
+# k <- 3
+#
+# # Number of simulations
+# n_sims <- 100000
+#
+# # Simulate from both beta distributions
+# set.seed(123)  # for reproducibility
+# theta_samples <- rbeta(n_sims, alpha_theta, beta_theta)
+# p_samples <- rbeta(n_sims, alpha_p, beta_p)
+#
+# # Calculate false negative rate for each simulation
+# fn_rates <- theta_samples * (1 - p_samples)^k
+#
+# # Summary statistics
+# mean(fn_rates)
+# quantile(fn_rates, c(0.025, 0.5, 0.975))
+#
+# # Visualize
+# data.frame(fn_rate = fn_rates) %>%
+#   ggplot(aes(x = fn_rate)) +
+#   geom_histogram(bins = 50, fill = "steelblue", alpha = 0.7) +
+#   geom_vline(xintercept = mean(fn_rates), color = "red", linetype = "dashed") +
+#   labs(title = "Distribution of False Negative Rates",
+#        x = "False Negative Rate",
+#        y = "Count") +
+#   theme_minimal()
 
 
 
