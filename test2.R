@@ -244,17 +244,16 @@ results %>%
 
 
 results %>%
-  filter(n_tech_reps == 6) %>%
-  # mutate(prop_pos = n_pos_samples / n_samples) %>%
-  ggplot(aes(x = as.factor(n_pos_samples),
+  filter(n_tech_reps == 6, n_pos_tech_reps <= 3) %>%
+  mutate(prop_pos = n_pos_samples / n_samples) %>%
+  ggplot(aes(x = prop_pos,
              y = sample_median, group = n_samples, color = as.factor(n_samples))) +
-  geom_point(position=position_dodge(width=0.5)) +
-  # geom_ribbon(aes(ymin = sample_0.025, ymax = sample_0.975, fill = n_samples), alpha = 0.2) +
-  geom_errorbar(aes(ymin = sample_0.025, ymax = sample_0.975), width = 0.2,
-                position=position_dodge(width=0.5)) +
+  geom_point() +
+  geom_ribbon(aes(ymin = sample_0.025, ymax = sample_0.975), alpha = 0.2) +
+  # geom_errorbar(aes(ymin = sample_0.025, ymax = sample_0.975), width = 0.2) +
   geom_line() +
   scale_color_viridis_d() +
-  labs(x = "Number of positive samples",
+  labs(x = "Proportion of positive samples",
        y = "Median & 95% CI for theta") +
   facet_grid(n_samples ~ n_pos_tech_reps,
              labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs, n_samples = ns.labs)
@@ -275,11 +274,13 @@ results %>%
   geom_tile(color = "white") +
   # scale_fill_viridis_c() +
   # scale_x_continuous(breaks = scales::pretty_breaks(5)) + #
+  scale_x_discrete(labels = seq(0.05, 1, 0.05), guide = guide_axis(n.dodge = 4)) +
   scale_fill_fermenter(direction = 1, palette = "OrRd", breaks = c(seq(0, 0.4, 0.1))) +
   facet_grid(n_tech_reps ~ n_pos_tech_reps,
              labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+  theme()
+  # theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 
 
 ## line plot reconfig
@@ -288,24 +289,27 @@ results %>%
   mutate(prop_pos = n_pos_samples / n_samples) %>%
   # snap to 0.01
   mutate(prop_pos_round = round(prop_pos, digits=2)) %>%
-  filter(prop_pos_round <= 0.5) %>%
+  filter(prop_pos_round <= 0.3) %>%
   mutate(prop_pos_round = cut(prop_pos_round,
                               breaks = seq(0, 1, by = 0.05),
                               right = TRUE,
                               include.lowest = TRUE)) %>%
-  ggplot(aes(x = as.factor(n_samples), y = sample_range,
+  ggplot(aes(x = (n_samples), y = sample_range,
              group = as.factor(n_pos_tech_reps), color = as.factor(n_pos_tech_reps))) +
   geom_line() +
+  geom_point() +
   # geom_tile(color = "white") +
   # scale_fill_viridis_c() +
-  # scale_x_continuous(breaks = scales::pretty_breaks(5)) + #
+  scale_x_continuous() + # guide = guide_axis(n.dodge = 2)
   # scale_y_continuous(breaks = c(3,6)) +
-  scale_fill_fermenter(direction = 1, palette = "OrRd", breaks = c(seq(0, 0.4, 0.1))) +
+  # scale_fill_fermenter(direction = 1, palette = "OrRd", breaks = c(seq(0, 0.4, 0.1))) +
+  scale_color_viridis_d() +
   facet_grid(n_tech_reps~prop_pos_round) +
   # facet_grid(n_pos_tech_reps ~ prop_pos_round,
   #            labeller= labeller(n_pos_tech_reps = ptr.labs, n_tech_reps = tr.labs)) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+  theme_bw() +
+  theme()
+  # theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 
 
 
@@ -329,14 +333,14 @@ results %>%
   theme_bw()
 
 results %>%
-  filter(n_tech_reps == 6) %>%
-  # mutate(prop_pos = n_pos_samples / n_samples) %>%
-  ggplot(aes(x = as.factor(n_pos_samples),
+  filter(n_tech_reps == 6, n_pos_tech_reps <= 4) %>%
+  mutate(prop_pos = n_pos_samples / n_samples) %>%
+  ggplot(aes(x = (prop_pos),
              y = rep_median, group = n_samples, color = as.factor(n_samples))) +
   geom_point(position=position_dodge(width=0.5)) +
-  # geom_ribbon(aes(ymin = sample_0.025, ymax = sample_0.975, fill = n_samples), alpha = 0.2) +
-  geom_errorbar(aes(ymin = rep_0.025, ymax = rep_0.975), width = 0.2,
-                position=position_dodge(width=0.5)) +
+  geom_ribbon(aes(ymin = rep_0.025, ymax = rep_0.975, fill = n_samples), alpha = 0.2) +
+  # geom_errorbar(aes(ymin = rep_0.025, ymax = rep_0.975), width = 0.2,
+  #               position=position_dodge(width=0.5)) +
   geom_line() +
   scale_color_viridis_d() +
   labs(x = "Number of positive samples",
@@ -353,7 +357,7 @@ results %>%
   mutate(prop_pos = n_pos_samples / n_samples) %>%
   # snap to 0.1
   mutate(prop_pos_round = cut(prop_pos,
-                              breaks = seq(0, 1, by = 0.1),
+                              breaks = seq(0, 1, by = 0.05),
                               right = TRUE,
                               include.lowest = TRUE)) %>%
   # filter(n_tech_reps == 6, n_pos_tech_reps == 3) %>%
@@ -369,8 +373,11 @@ results %>%
   theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 
 
+
 # ---------------------------------------------------------------------------- #
 
+
+## get beta params from mean, median, percentiles OR see if msocc saves post distribs
 
 fit_beta_from_stats <- function(mean_val, median_val, q025, q975) {
 
@@ -550,8 +557,8 @@ simulate_full_study <- function(n_samples, k_techreps,
 
 # Run it
 study_results <- simulate_full_study(
-  n_samples = 50,
-  k_techreps = 3,
+  n_samples = results$n_samples[n],
+  k_techreps = results$n_tech_reps[n],
   alpha_theta = test_theta$alpha, beta_theta = test_theta$beta,
   alpha_p = test_p$alpha, beta_p = test_p$beta
 )
@@ -560,6 +567,72 @@ summary(study_results)
 
 ggplot(study_results, aes(x=fn_count)) +
   geom_histogram(binwidth = 1, color = "black")
+
+ggplot(study_results, aes(x=fn_rate)) +
+  geom_histogram(binwidth = 0.03, color = "black")
+
+mean(study_results$fn_count)
+median(study_results$fn_count)
+sd(study_results$fn_count)
+
+mean(study_results$fn_rate)
+median(study_results$fn_rate)
+sd(study_results$fn_rate)
+
+# What to Optimize
+#
+# ✅ Uncertainty (θ, p, FN rate) - you have this
+
+# ✅ FN rate - keep below acceptable threshold
+# ✅ Failure risk - P(zero detections) ≤ 5%
+# ✅ Cost-effectiveness - precision per dollar
+# ✅ Bias - check estimates are unbiased
+# ✅ Minimum detectable effect - if comparing groups
+# ✅ Robustness - works across parameter uncertainty
+# ✅ Allocation - spatial/temporal strategy
+
+
+# ✅ Detection power - P(detect if present) ≥ 95%  -- complement is failure risk
+# Min N needed to get to >=99% for a set of theta, p, k
+
+
+prob_detect_survey <- function(n, k, theta, p) {
+  prob_single <- theta * (1 - (1 - p)^k)
+  prob_at_least_one <- 1 - (1 - prob_single)^n
+  return(prob_at_least_one)
+}
+
+
+scenarios <- expand.grid(
+  theta = seq(0,1,0.01),
+  p = seq(0,1,0.01),
+  k = c(3,6,9),
+  n = 1:300
+)
+
+
+scenarios =
+  scenarios %>%
+  mutate(prob = prob_detect_survey(n=n, k=k, theta=theta, p=p)) %>%
+  # extract smallest n per combo
+  group_by(theta, p, k) %>%
+  filter(prob >= 0.95) %>%
+  slice_min(n) %>%
+  ungroup() %>%
+  # complete cases for combos that can't reach threshold
+  complete(theta, p, k)
+
+
+scenarios %>%
+  filter(theta < 0.5, p < 0.5) %>%
+  ggplot(aes(x = theta, y = p, fill = n)) +
+  geom_tile() +
+  coord_cartesian(expand = FALSE) +
+  facet_grid(~k)+
+  scale_fill_fermenter(direction = 1, palette = "OrRd", breaks = c(30, 50, 100, 200)) +
+  theme_bw()
+
+
 
 # # Set your beta distribution parameters
 # alpha_theta <- test_theta$alpha
