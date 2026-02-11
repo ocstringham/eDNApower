@@ -607,7 +607,7 @@ scenarios <- expand.grid(
   theta = seq(0,1,0.01),
   p = seq(0,1,0.01),
   k = c(3,6,9),
-  n = 1:300
+  n = c(1,10,30,50,100, seq(100, 1000, 50), seq(2000, 20000, 1000))
 )
 
 
@@ -629,8 +629,15 @@ scenarios %>%
   geom_tile() +
   coord_cartesian(expand = FALSE) +
   facet_grid(~k)+
-  scale_fill_fermenter(direction = 1, palette = "OrRd", breaks = c(30, 50, 100, 200)) +
+  scale_fill_fermenter(direction = 1, palette = "OrRd", breaks = c(30, 50, 100, 250, 500,5000)) +
   theme_bw()
+
+
+scenarios %>%
+  filter(theta < 0.5, k ==6) %>%
+  filter( p %in% c(0.01, 0.05, 0.3)) %>%
+  ggplot(aes(x = theta, y = n, color = as.factor(p), group = as.factor(p))) +
+  geom_line()
 
 
 
