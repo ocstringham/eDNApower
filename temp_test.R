@@ -1,4 +1,5 @@
 
+## devtools::load_all()
 
 
 ?eDNA_power
